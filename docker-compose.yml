@@ -1,0 +1,75 @@
+
+#services:
+#  frontend:
+#    build: ./frontend
+#    ports:
+#      - "3000:80"
+#
+#  backend:
+#    build: ./backend
+#    ports:
+#      - "8080:8080"
+#    environment:
+#      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/postgres
+#      - SPRING_DATASOURCE_USERNAME=admin
+#      - SPRING_DATASOURCE_PASSWORD=admin
+#
+#  postgres:
+#    image: postgres:14
+#    environment:
+#      - POSTGRES_USER=admin
+#      - POSTGRES_PASSWORD=admin
+#      - POSTGRES_DB=postgres
+#    ports:
+#      - "5432:5432"
+
+services:
+  database:
+    image: postgres:latest
+    container_name: healthportal-database
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432" # Maps the database service to localhost:5432
+    volumes:
+      - database-data:/var/lib/postgresql/data # Persists database data
+
+  backend:
+    build:
+      context: ./backend #builds the backend using the Dockerfile in ./backend
+      dockerfile: Dockerfile
+    container_name: healthportal-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://healthportal-database:5432/postgres
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: admin
+    ports:
+      - "8080:8080" # Maps backend service to localhost:8080
+    depends_on:
+      - database # Ensures the database starts before the backend
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: healthportal-frontend
+    ports:
+      - "3000:80" # Maps frontend service to localhost:80
+    depends_on:
+      - backend # Ensures backend is started before the frontend
+
+  nginx:
+    image: nginx:latest
+    container_name: healthportal-nginx
+    ports:
+      - "80:80" # Exposes Nginx on port 80
+    depends_on:
+      - frontend
+      - backend
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro # Use a custom Nginx configuration
+
+volumes:
+  database-data:
